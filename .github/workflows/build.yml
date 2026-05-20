@@ -46,7 +46,7 @@ jobs:
           path: app/build/reports/tests/
 
   instrumented:
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     needs: test
 
     strategy:
@@ -79,7 +79,7 @@ jobs:
           target: ${{ matrix.target }}
           arch: x86_64
           avd-name: ci-test
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: ./gradlew connectedDebugAndroidTest
 
