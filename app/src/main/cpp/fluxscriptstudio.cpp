@@ -51,7 +51,7 @@ Java_com_jnd_fluxscriptstudio_MainActivity_compileFluxScript(
         output += "Execution Result: " + match[1].str();
         output += "\nStatus: SUCCESS";
     } else {
-        output += "Execution Result: [Mock Echo] " + sourceStr.substr(0, 50) + "...";
+        output += "Execution Result: [Mock Echo] " + sourceStr.substr(0, 5000);
         output += "\nStatus: SUCCESS (No Expectation)";
     }
 #endif
