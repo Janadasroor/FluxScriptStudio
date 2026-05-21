@@ -3,11 +3,21 @@
 #include <android/log.h>
 #include <regex>
 #include <dlfcn.h>
+#include <setjmp.h>
+#include <signal.h>
 
 #define LOG_TAG "FluxScriptStudio"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+
+static sigjmp_buf flux_jmpbuf;
+static volatile sig_atomic_t flux_crashed = 0;
+
+static void flux_crash_handler(int signum) {
+    flux_crashed = 1;
+    siglongjmp(flux_jmpbuf, 1);
+}
 
 #ifdef HAS_FLUX_COMPILER
 
@@ -30,59 +40,43 @@ struct FluxScriptLib {
     }
 
     bool load() {
-        LOGI("RealMode: dlopen libFluxScript.so...");
         handle = dlopen("libFluxScript.so", RTLD_NOW);
         if (!handle) {
-            LOGW("RealMode: dlopen failed: %s", dlerror());
+            LOGW("dlopen libFluxScript.so failed: %s", dlerror());
             return false;
         }
-        LOGI("RealMode: dlopen OK, dlsym instance...");
         auto instance = (flux_instance_t)dlsym(handle, "_ZN4Flux9JITEngine8instanceEv");
         if (!instance) {
-            LOGE("RealMode: instance symbol not found");
+            LOGE("dlsym instance failed");
             dlclose(handle); handle = nullptr;
             return false;
         }
-        LOGI("RealMode: calling instance()...");
         engine = instance();
         loaded = true;
-        LOGI("RealMode: JITEngine=%p", engine);
         return true;
     }
 
     bool init() {
         if (!engine) return false;
-        LOGI("RealMode: init check isInitialized...");
         auto isInit = (flux_is_init_t)dlsym(handle, "_ZNK4Flux9JITEngine13isInitializedEv");
-        if (isInit && isInit(engine)) {
-            LOGI("RealMode: already initialized");
-            inited = true;
-            return true;
-        }
-        LOGI("RealMode: dlsym initialize...");
+        if (isInit && isInit(engine)) { inited = true; return true; }
         auto initFn = (flux_init_t)dlsym(handle, "_ZN4Flux9JITEngine10initializeEv");
-        if (!initFn) { LOGE("RealMode: initialize symbol not found"); return false; }
-        LOGI("RealMode: calling initialize()...");
+        if (!initFn) { LOGE("dlsym initialize failed"); return false; }
         initFn(engine);
         inited = true;
-        LOGI("RealMode: initialized OK");
         return true;
     }
 
     bool exec(const std::string& code, std::string* error) {
         if (!engine) return false;
-        LOGI("RealMode: dlsym executeString...");
         auto execFn = (flux_exec_t)dlsym(handle,
             "_ZN4Flux9JITEngine13executeStringERKNSt6__ndk112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEPS7_");
         if (!execFn) {
-            LOGE("RealMode: executeString symbol not found");
+            LOGE("dlsym executeString failed");
             if (error) *error = "executeString API not found in FluxScript library";
             return false;
         }
-        LOGI("RealMode: calling executeString...");
-        bool result = execFn(engine, code, error);
-        LOGI("RealMode: executeString returned %d", (int)result);
-        return result;
+        return execFn(engine, code, error);
     }
 
     ~FluxScriptLib() {
@@ -105,18 +99,22 @@ Java_com_jnd_fluxscriptstudio_MainActivity_compileFluxScript(
 
     const char* nativeSource = env->GetStringUTFChars(source, nullptr);
     std::string sourceStr(nativeSource);
-    LOGI("Compiling Flux code:\n%s", nativeSource);
-
     std::string output;
 
 #ifdef HAS_FLUX_COMPILER
-    {
-        LOGI("RealMode: creating static FluxScriptLib...");
+    struct sigaction sa;
+    sa.sa_handler = flux_crash_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGSEGV, &sa, nullptr);
+    sigaction(SIGILL, &sa, nullptr);
+    sigaction(SIGBUS, &sa, nullptr);
+
+    flux_crashed = 0;
+    if (sigsetjmp(flux_jmpbuf, 1) == 0) {
         static FluxScriptLib flux;
-        LOGI("RealMode: calling flux.ensure()...");
-        if (flux.ensure()) {
+        if (!flux_crashed && flux.ensure()) {
             std::string error;
-            LOGI("RealMode: calling flux.exec()...");
             bool success = flux.exec(nativeSource, &error);
             if (success) {
                 output = "FluxScript 0.1.0 Success:\n";
@@ -129,15 +127,14 @@ Java_com_jnd_fluxscriptstudio_MainActivity_compileFluxScript(
                 output += error.empty() ? "Runtime error" : error;
                 output += "\nStatus: FAILURE";
             }
-        } else {
-            LOGW("RealMode: ensure() failed, falling back to mock mode");
-            goto mock_mode;
         }
     }
-    LOGI("RealMode: path completed successfully");
-    if (false) {
-mock_mode:;
+    if (flux_crashed) {
+        LOGW("FluxScript real mode crashed, falling back to mock mode");
+    }
 #endif
+
+    if (output.empty()) {
         output = "FluxScript 0.1.0 (Mock Mode)\n";
         output += "---------------------------\n";
 
@@ -151,9 +148,7 @@ mock_mode:;
             output += sourceStr.length() > 5000 ? sourceStr.substr(0, 5000) + "..." : sourceStr;
             output += "\nStatus: SUCCESS (No Expectation)";
         }
-#ifdef HAS_FLUX_COMPILER
     }
-#endif
 
     env->ReleaseStringUTFChars(source, nativeSource);
     return env->NewStringUTF(output.c_str());
