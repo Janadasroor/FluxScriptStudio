@@ -21,7 +21,7 @@ class CompilerInstrumentationTest {
             
             // Verify that the result contains expected version info or mock output
             assertTrue("Result should contain version info", result.contains("FluxScript"))
-            assertTrue("Result should contain input source", result.contains("print(\"test\");"))
+            assertTrue("Result should contain status", result.contains("Status:"))
         }
     }
 }

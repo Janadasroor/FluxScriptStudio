@@ -5,6 +5,11 @@ plugins {
 
 android {
     namespace = "com.jnd.fluxscriptstudio"
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/cpp/lib")
+        }
+    }
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
