@@ -24,23 +24,23 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Fetch FluxScript 0.1.0 Binaries
+        continue-on-error: true
         run: |
           mkdir -p app/src/main/cpp/include
           mkdir -p app/src/main/cpp/lib/arm64-v8a
           mkdir -p app/src/main/cpp/lib/x86_64
           
-          # 1. Handle x86_64 (For CI Emulators)
-          curl -L https://github.com/Janadasroor/fluxscript/releases/download/v0.1.0/fluxscript-android-x86_64.tar.gz -o flux-x86_64.tar.gz
-          mkdir -p temp_x86_64
-          tar -xzf flux-x86_64.tar.gz -C temp_x86_64
-          echo "Structure of x86_64 archive:"
-          ls -R temp_x86_64
+          X86_64_URL="https://github.com/Janadasroor/fluxscript/releases/download/v0.1.0/fluxscript-android-x86_64.tar.gz"
+          if curl --output /dev/null --silent --head --fail "$X86_64_URL"; then
+            curl -L "$X86_64_URL" -o flux-x86_64.tar.gz
+            mkdir -p temp_x86_64
+            tar -xzf flux-x86_64.tar.gz -C temp_x86_64
+            find temp_x86_64 -name "*.so" -exec cp {} app/src/main/cpp/lib/x86_64/ \;
+            find temp_x86_64 -name "*.h" -exec cp {} app/src/main/cpp/include/ \;
+          else
+            echo "Warning: x86_64 binary not found at $X86_64_URL"
+          fi
           
-          # Use find to locate and copy files regardless of structure
-          find temp_x86_64 -name "*.so" -exec cp {} app/src/main/cpp/lib/x86_64/ \;
-          find temp_x86_64 -name "*.h" -exec cp {} app/src/main/cpp/include/ \;
-          
-          # 2. Handle arm64-v8a (For Physical Devices)
           ARM64_URL="https://github.com/Janadasroor/fluxscript/releases/download/v0.1.0/fluxscript-android-arm64.tar.gz"
           if curl --output /dev/null --silent --head --fail "$ARM64_URL"; then
             curl -L "$ARM64_URL" -o flux-arm64.tar.gz
@@ -100,14 +100,20 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Fetch FluxScript 0.1.0 Binaries
+        continue-on-error: true
         run: |
           mkdir -p app/src/main/cpp/include
           mkdir -p app/src/main/cpp/lib/x86_64
-          curl -L https://github.com/Janadasroor/fluxscript/releases/download/v0.1.0/fluxscript-android-x86_64.tar.gz -o flux-x86_64.tar.gz
-          mkdir -p temp_x86_64
-          tar -xzf flux-x86_64.tar.gz -C temp_x86_64
-          find temp_x86_64 -name "*.so" -exec cp {} app/src/main/cpp/lib/x86_64/ \;
-          find temp_x86_64 -name "*.h" -exec cp {} app/src/main/cpp/include/ \;
+          X86_64_URL="https://github.com/Janadasroor/fluxscript/releases/download/v0.1.0/fluxscript-android-x86_64.tar.gz"
+          if curl --output /dev/null --silent --head --fail "$X86_64_URL"; then
+            curl -L "$X86_64_URL" -o flux-x86_64.tar.gz
+            mkdir -p temp_x86_64
+            tar -xzf flux-x86_64.tar.gz -C temp_x86_64
+            find temp_x86_64 -name "*.so" -exec cp {} app/src/main/cpp/lib/x86_64/ \;
+            find temp_x86_64 -name "*.h" -exec cp {} app/src/main/cpp/include/ \;
+          else
+            echo "Warning: x86_64 binary not found at $X86_64_URL"
+          fi
 
       - name: Run Flux Code Validation
         uses: reactivecircus/android-emulator-runner@v2
