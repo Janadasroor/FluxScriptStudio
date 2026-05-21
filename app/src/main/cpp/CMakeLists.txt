@@ -7,15 +7,16 @@ project("fluxscriptstudio")
 # Define paths for FluxScript release 0.1.0
 set(FLUX_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(FLUX_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/${ANDROID_ABI})
+set(FLUX_SO ${FLUX_LIB_DIR}/libFluxScript.so)
 
 # Detect if the FluxScript library is present to allow building even without binaries
-if(EXISTS "${FLUX_LIB_DIR}/libflux.so")
-    message(STATUS "FluxScript library found at ${FLUX_LIB_DIR}")
+if(EXISTS "${FLUX_SO}")
+    message(STATUS "FluxScript library found at ${FLUX_SO}")
     add_library(flux_compiler SHARED IMPORTED)
-    set_target_properties(flux_compiler PROPERTIES IMPORTED_LOCATION ${FLUX_LIB_DIR}/libflux.so)
+    set_target_properties(flux_compiler PROPERTIES IMPORTED_LOCATION ${FLUX_SO})
     set(HAS_FLUX 1)
 else()
-    message(WARNING "FluxScript library NOT found at ${FLUX_LIB_DIR}. Building in Mock Mode.")
+    message(WARNING "FluxScript library NOT found at ${FLUX_SO}. Building in Mock Mode.")
     set(HAS_FLUX 0)
 endif()
 
@@ -32,7 +33,6 @@ if(HAS_FLUX)
         flux_compiler
         android
         log)
-    # Define macro for conditional compilation in fluxscriptstudio.cpp
     target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HAS_FLUX_COMPILER)
 else()
     target_link_libraries(${CMAKE_PROJECT_NAME}
