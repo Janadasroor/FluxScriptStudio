@@ -40,8 +40,8 @@ class CompilerUiTest {
         composeTestRule.onNodeWithTag("clear_button")
             .performClick()
 
-        // Verify editor is empty or at least original text is gone
+        // Verify editor no longer contains the initial text
         composeTestRule.onNodeWithTag("code_editor")
-            .assertTextContains("FluxScript", substring = true).assertDoesNotExist()
+            .assertTextDoesNotContain("FluxScript")
     }
 }

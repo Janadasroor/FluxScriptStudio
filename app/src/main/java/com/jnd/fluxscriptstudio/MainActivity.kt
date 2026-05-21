@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
@@ -122,7 +123,7 @@ fun CompilerScreen(onCompile: (String) -> String) {
                 CodeEditor(
                     value = code,
                     onValueChange = { code = it },
-                    modifier = Modifier.fillMaxSize().testTag("code_editor")
+                    modifier = Modifier.fillMaxSize()
                 )
             }
             HorizontalDivider(thickness = 2.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -149,11 +150,11 @@ fun CodeEditor(value: String, onValueChange: (String) -> Unit, modifier: Modifie
                 Text(text = i.toString(), style = TextStyle(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), fontSize = 13.sp, fontFamily = FontFamily.Monospace, textAlign = androidx.compose.ui.text.style.TextAlign.End), modifier = Modifier.padding(end = 10.dp))
             }
         }
-        Box(modifier = Modifier.horizontalScroll(horizontalScrollState)) {
+        Box(modifier = Modifier.horizontalScroll(horizontalScrollState).semantics(mergeDescendants = false) { }) {
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
-                modifier = Modifier.widthIn(min = 1000.dp).padding(top = 16.dp, start = 8.dp, end = 16.dp, bottom = 16.dp),
+                modifier = Modifier.widthIn(min = 1000.dp).padding(top = 16.dp, start = 8.dp, end = 16.dp, bottom = 16.dp).testTag("code_editor"),
                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontFamily = FontFamily.Monospace, lineHeight = 20.sp),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 visualTransformation = FluxScriptVisualTransformation()
