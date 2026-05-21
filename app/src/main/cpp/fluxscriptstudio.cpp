@@ -29,7 +29,6 @@ struct FluxScriptLib {
         return init();
     }
 
-private:
     bool load() {
         handle = dlopen("libFluxScript.so", RTLD_NOW | RTLD_GLOBAL);
         if (!handle) {
